@@ -58,7 +58,7 @@ fun BottomSheetWrapper(
     cancelable: Boolean = true,
     state: ModalBottomSheetState = rememberModalBottomSheetState(
         initialValue = ModalBottomSheetValue.Hidden,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 260f),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 900f),
     ),
     content: @Composable (state: ModalBottomSheetState) -> Unit
 ) {
@@ -159,14 +159,14 @@ fun BottomSheetWrapper(
             LaunchedEffect(Unit) {
                 enter.animateTo(
                     1f,
-                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
+                    spring(dampingRatio = 0.85f, stiffness = 800f),
                 )
             }
 
             Box(
                 Modifier.graphicsLayer {
                     alpha = enter.value.coerceIn(0f, 1f)
-                    translationY = (1f - enter.value) * 36.dp.toPx()
+                    translationY = (1f - enter.value) * 20.dp.toPx()
                 }
             ) {
                 CompositionLocalProvider(
