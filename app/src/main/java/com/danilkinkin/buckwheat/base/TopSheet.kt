@@ -2,6 +2,9 @@ package com.danilkinkin.buckwheat.base
 
 import android.view.MotionEvent
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.Orientation
@@ -26,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -38,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -223,6 +228,9 @@ fun TopSheetLayout(
                     Box(
                         Modifier
                             .fillMaxSize()
+                            .graphicsLayer {
+                                translationY = (1f - progress) * 40.dp.toPx()
+                            }
                             .alpha(max(progress * 2f - 1f, 0f))
                     ) {
                         sheetContentExpand()
@@ -245,6 +253,12 @@ fun TopSheetLayout(
                     Column(
                         Modifier
                             .fillMaxSize()
+                            .graphicsLayer {
+                                val scale = 1f - progress * 0.05f
+                                translationY = -progress * 48.dp.toPx()
+                                scaleX = scale
+                                scaleY = scale
+                            }
                             .alpha(max(1f - progress * 2, 0f)),
                     ) {
                         Box(
@@ -294,10 +308,37 @@ fun TopSheetLayout(
                 ) {
                     val balloonState = rememberBalloonState()
 
+                    val nudge = remember { Animatable(0f) }
+                    val isIdle = !lockDraggable.value && progress == 0f
+
+                    LaunchedEffect(isIdle) {
+                        nudge.snapTo(0f)
+                        if (!isIdle) return@LaunchedEffect
+
+                        delay(1500)
+                        while (true) {
+                            nudge.animateTo(
+                                1f,
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium,
+                                ),
+                            )
+                            nudge.animateTo(
+                                0f,
+                                spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessLow,
+                                ),
+                            )
+                            delay(4500)
+                        }
+                    }
+
                     BalloonScope(
                         Modifier
-                            .height(4.dp)
-                            .width(30.dp)
+                            .height(5.dp)
+                            .width(72.dp)
                             .align(Alignment.Center),
                         balloonState = balloonState,
                         content = {
@@ -312,11 +353,14 @@ fun TopSheetLayout(
                     ) {
                         Box(
                             Modifier
-                                .height(4.dp)
-                                .width(30.dp)
+                                .graphicsLayer {
+                                    translationY = nudge.value * 8.dp.toPx()
+                                }
+                                .height(5.dp)
+                                .width((40f + 24f * progress + 10f * nudge.value).dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        .copy(alpha = if (lockDraggable.value) 0f else 0.3f),
+                                        .copy(alpha = if (lockDraggable.value) 0f else 0.5f),
                                     shape = CircleShape
                                 )
                                 .align(Alignment.Center)
