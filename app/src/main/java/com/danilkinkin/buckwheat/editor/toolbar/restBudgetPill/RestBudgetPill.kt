@@ -92,7 +92,7 @@ fun RowScope.RestBudgetPill(
     val percentWithNewSpentAnimated = animateFloatAsState(
         label = "percentWithNewSpentAnimated",
         targetValue = percentWithNewSpent,
-        animationSpec = TweenSpec(300),
+        animationSpec = tween(durationMillis = 900, easing = FastOutSlowInEasing),
     ).value
 
     val harmonizedColor = toPalette(

@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FloatTweenSpec
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
@@ -45,12 +47,12 @@ fun BackgroundProgress(
     val percentWithoutNewSpentAnimated by animateFloatAsState(
         label = "percentRealAnim",
         targetValue = percentWithoutNewSpent,
-        animationSpec = TweenSpec(250),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
     )
     val percentWithNewSpentAnimated = animateFloatAsState(
         label = "percentWithNewSpentAnimated",
         targetValue = percentWithNewSpent,
-        animationSpec = TweenSpec(300),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
     ).value
 
     val shift = remember { Animatable(0f) }
@@ -111,7 +113,7 @@ fun BackgroundProgress(
                         )
                     }
                     .fillMaxHeight()
-                    .fillMaxWidth(percentWithoutNewSpentAnimated),
+                    .fillMaxWidth(percentWithoutNewSpentAnimated.coerceIn(0f, 1f)),
             )
         }
     }
@@ -119,7 +121,7 @@ fun BackgroundProgress(
         Box(
             modifier = Modifier
                 .background(
-                    harmonizedColor.main.copy(alpha = 0.15f),
+                    harmonizedColor.main.copy(alpha = 0.42f),
                     shape = WavyShape(
                         period = 30.dp,
                         amplitude = percentWithNewSpentAnimated.clamp(0.96f, 1f) * 2.dp,
@@ -127,7 +129,7 @@ fun BackgroundProgress(
                     ),
                 )
                 .fillMaxHeight()
-                .fillMaxWidth(percentWithNewSpentAnimated),
+                .fillMaxWidth(percentWithNewSpentAnimated.coerceIn(0f, 1f)),
         )
     }
 }
