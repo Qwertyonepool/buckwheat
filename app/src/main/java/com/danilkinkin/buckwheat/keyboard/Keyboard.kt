@@ -322,6 +322,7 @@ fun Keyboard(
                                             appViewModel.activateTutorial(TUTORS.OPEN_HISTORY)
                                         }
 
+                                        editorViewModel.notifyCommitted()
                                         editorViewModel.resetEditingSpent()
                                     }
                                 }

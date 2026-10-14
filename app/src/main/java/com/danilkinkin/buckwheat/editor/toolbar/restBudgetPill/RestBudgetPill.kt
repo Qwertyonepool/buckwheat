@@ -73,11 +73,20 @@ fun RowScope.RestBudgetPill(
     observeLiveData(editorViewModel.stage) {
         restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
 
-        if (it === EditStage.COMMITTING_SPENT && spendDrop.barTarget != null) {
-            bumpScope.launch {
-                kotlinx.coroutines.delay(320)
-                bump.snapTo(1.05f)
-                bump.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 700f))
+    }
+
+    var lastSeenCommit by remember { mutableIntStateOf(editorViewModel.spentCommitted.value ?: 0) }
+
+    observeLiveData(editorViewModel.spentCommitted) {
+        if (it > lastSeenCommit) {
+            lastSeenCommit = it
+
+            if (spendDrop.barTarget != null) {
+                bumpScope.launch {
+                    kotlinx.coroutines.delay(400)
+                    bump.snapTo(1.06f)
+                    bump.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 700f))
+                }
             }
         }
     }

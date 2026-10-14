@@ -49,8 +49,13 @@ fun Editor(
     var dropKey by remember { mutableIntStateOf(0) }
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
 
-    observeLiveData(editorViewModel.stage) {
-        if (it === EditStage.COMMITTING_SPENT) dropKey++
+    var lastSeenCommit by remember { mutableIntStateOf(editorViewModel.spentCommitted.value ?: 0) }
+
+    observeLiveData(editorViewModel.spentCommitted) {
+        if (it > lastSeenCommit) {
+            lastSeenCommit = it
+            dropKey++
+        }
     }
 
     Box(

@@ -25,6 +25,11 @@ class EditorViewModel @Inject constructor(
     var currentSpent: BigDecimal = BigDecimal.ZERO
     var currentComment = MutableLiveData("")
     var rawSpentValue = MutableLiveData("")
+    var spentCommitted = MutableLiveData(0)
+
+    fun notifyCommitted() {
+        spentCommitted.value = (spentCommitted.value ?: 0) + 1
+    }
 
     fun startEditingSpent(transaction: Transaction) {
         editedTransaction = transaction

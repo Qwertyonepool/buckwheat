@@ -29,7 +29,7 @@ class SpendDropState {
 
 val LocalSpendDrop = compositionLocalOf { SpendDropState() }
 
-private const val DROP_DURATION_MS = 380
+private const val DROP_DURATION_MS = 480
 
 /** Purely visual, never intercepts touches and never delays committing a spend. */
 @Composable
@@ -62,18 +62,26 @@ fun SpendDropOverlay(
     val color = if (state.color == Color.Unspecified) Color.White else state.color
 
     Canvas(Modifier.fillMaxSize()) {
-        val t = progress.value.coerceIn(0f, 1f)
         val control = Offset(maxOf(from.x, to.x) + 48.dp.toPx(), (from.y + to.y) / 2f)
-        val inv = 1f - t
-        val point = Offset(
-            inv * inv * from.x + 2f * inv * t * control.x + t * t * to.x,
-            inv * inv * from.y + 2f * inv * t * control.y + t * t * to.y,
-        ) - rootOffset
 
-        drawCircle(
-            color = color.copy(alpha = 1f - t * 0.35f),
-            radius = (14.dp.toPx() * (1f - t) + 5.dp.toPx() * t),
-            center = point,
-        )
+        // head plus a short fading trail so the motion reads as a drop travelling
+        for (k in 0..3) {
+            val t = (progress.value - 0.07f * k).coerceIn(0f, 1f)
+
+            if (t <= 0f && k > 0) continue
+
+            val inv = 1f - t
+            val point = Offset(
+                inv * inv * from.x + 2f * inv * t * control.x + t * t * to.x,
+                inv * inv * from.y + 2f * inv * t * control.y + t * t * to.y,
+            ) - rootOffset
+            val scale = 1f - 0.18f * k
+
+            drawCircle(
+                color = color.copy(alpha = (1f - t * 0.3f) * (1f - 0.27f * k)),
+                radius = (18.dp.toPx() * (1f - t) + 7.dp.toPx() * t) * scale,
+                center = point,
+            )
+        }
     }
 }
