@@ -1,7 +1,12 @@
 package com.danilkinkin.buckwheat.editor
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +54,21 @@ fun CurrentSpendEditor(
     var requestFocus by remember { mutableStateOf(false) }
     var hide by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
+
+    val rawValue by editorViewModel.rawSpentValue.observeAsState("")
+    val amountPop = remember { Animatable(1f) }
+
+    LaunchedEffect(rawValue) {
+        if (rawValue == "" || rawValue == "0") {
+            amountPop.snapTo(1f)
+            return@LaunchedEffect
+        }
+        amountPop.snapTo(1.07f)
+        amountPop.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        )
+    }
 
     fun calculateValues() {
         spentValue = editorViewModel.rawSpentValue.value!!
@@ -120,6 +140,11 @@ fun CurrentSpendEditor(
         ) {
             if (!hide) {
                 EditableTextWithLabel(
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = amountPop.value
+                        scaleY = amountPop.value
+                        transformOrigin = TransformOrigin(1f, 0.5f)
+                    },
                     value = spentValue,
                     onChangeValue = {
                         val fixed = fixedNumberString(it)

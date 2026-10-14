@@ -3,6 +3,8 @@ package com.danilkinkin.buckwheat.history
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.*
@@ -32,8 +34,18 @@ data class RowEntity(
  */
 inline fun LazyListScope.animatedItemsIndexed(
     state: List<AnimatedItem<RowEntity>>,
-    enterTransition: EnterTransition = expandVertically(),
-    exitTransition: ExitTransition = shrinkVertically(),
+    enterTransition: EnterTransition = fadeIn(
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessLow)
+    ) + slideInVertically(
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+    ) { -it / 2 } + expandVertically(
+        spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
+    ),
+    exitTransition: ExitTransition = fadeOut(
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    ) + shrinkVertically(
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+    ),
     noinline key: ((item: RowEntity) -> Any)? = null,
     crossinline itemContent: @Composable LazyItemScope.(index: Int, item: RowEntity) -> Unit
 ) {

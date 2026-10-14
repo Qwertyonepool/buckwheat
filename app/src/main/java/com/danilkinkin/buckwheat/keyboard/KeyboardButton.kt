@@ -1,6 +1,9 @@
 package com.danilkinkin.buckwheat.keyboard
 
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -16,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.*
 import androidx.compose.ui.platform.LocalDensity
@@ -49,7 +53,15 @@ fun KeyboardButton(
     var minSizeFloat by remember { mutableStateOf(MAX_VALUE.toFloat()) }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed = interactionSource.collectIsPressedAsState()
-    val radius = animateDpAsState(targetValue = if (isPressed.value) 20.dp else minSize / 2)
+    val radius = animateDpAsState(
+        targetValue = if (isPressed.value) 20.dp else minSize / 2,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+    )
+    val pressScale = animateFloatAsState(
+        targetValue = if (isPressed.value) 0.9f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "keyPressScale",
+    )
 
     val color = when (type) {
         KeyboardButtonType.DEFAULT -> colorButton
@@ -71,6 +83,10 @@ fun KeyboardButton(
         tonalElevation = 10.dp,
         modifier = modifier
             .fillMaxSize()
+            .graphicsLayer {
+                scaleX = pressScale.value
+                scaleY = pressScale.value
+            }
             .onGloballyPositioned {
                 minSize = with(localDensity) { min(it.size.height, it.size.width).toDp() }
                 minSizeFloat = min(it.size.height, it.size.width).toFloat()
