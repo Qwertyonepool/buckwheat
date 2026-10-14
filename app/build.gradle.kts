@@ -31,6 +31,8 @@ android {
         }
 
         getByName("release") {
+            applicationIdSuffix = ".expressive"
+            versionNameSuffix = "-expressive"
             isMinifyEnabled = true
             signingConfig = signingConfigs.getByName("debug")
 
