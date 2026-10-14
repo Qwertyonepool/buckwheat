@@ -25,6 +25,8 @@ android {
 
     buildTypes {
         getByName("debug") {
+            applicationIdSuffix = ".expressive"
+            versionNameSuffix = "-expressive"
             signingConfig = signingConfigs.getByName("debug")
         }
 
@@ -75,11 +77,11 @@ dependencies {
     implementation("androidx.compose.foundation:foundation:1.8.3")
     implementation("androidx.compose.foundation:foundation-layout:1.8.3")
     implementation("androidx.compose.ui:ui-util:1.8.3")
-    implementation("androidx.compose.material3:material3-window-size-class:1.3.2")
+    implementation("androidx.compose.material3:material3-window-size-class:1.5.0-alpha12")
     implementation("androidx.compose.animation:animation:1.8.3")
     implementation("androidx.compose.ui:ui-tooling-preview:1.8.3")
     implementation("androidx.compose.runtime:runtime-livedata:1.8.3")
-    implementation("androidx.compose.material3:material3:1.3.2")
+    implementation("androidx.compose.material3:material3:1.5.0-alpha12")
     implementation("androidx.compose.material:material:1.8.3")
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
