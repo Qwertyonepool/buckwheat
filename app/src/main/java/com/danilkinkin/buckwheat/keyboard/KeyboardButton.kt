@@ -55,7 +55,7 @@ fun KeyboardButton(
     val isPressed = interactionSource.collectIsPressedAsState()
     val radius = animateDpAsState(
         targetValue = if (isPressed.value) 20.dp else minSize / 2,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
     )
     val pressScale = animateFloatAsState(
         targetValue = if (isPressed.value) 0.9f else 1f,
@@ -91,13 +91,13 @@ fun KeyboardButton(
                 minSize = with(localDensity) { min(it.size.height, it.size.width).toDp() }
                 minSizeFloat = min(it.size.height, it.size.width).toFloat()
             }
-            .clip(RoundedCornerShape(radius.value))
+            .clip(RoundedCornerShape(radius.value.coerceAtLeast(0.dp)))
     ) {
         Box(
             modifier = Modifier
                 .background(color = color)
                 .fillMaxSize()
-                .clip(RoundedCornerShape(radius.value))
+                .clip(RoundedCornerShape(radius.value.coerceAtLeast(0.dp)))
                 .combinedClickable(
                     interactionSource = interactionSource,
                     indication = ripple(),
