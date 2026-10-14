@@ -5,6 +5,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.livedata.observeAsState
@@ -133,7 +137,18 @@ fun CurrentSpendEditor(
         }
     }
 
-    BoxWithConstraints(modifier) {
+    val spendDrop = LocalSpendDrop.current
+
+    BoxWithConstraints(
+        modifier.onGloballyPositioned {
+            val origin = it.positionInRoot()
+
+            spendDrop.amountAnchor = Offset(
+                origin.x + it.size.width - with(localDensity) { 72.dp.toPx() },
+                origin.y + it.size.height / 2f,
+            )
+        }
+    ) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.CenterEnd,

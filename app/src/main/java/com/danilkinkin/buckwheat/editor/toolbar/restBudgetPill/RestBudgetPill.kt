@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.danilkinkin.buckwheat.editor.LocalSpendDrop
+import com.danilkinkin.buckwheat.editor.EditStage
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,8 +66,20 @@ fun RowScope.RestBudgetPill(
         restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
     }
 
+    val spendDrop = LocalSpendDrop.current
+    val bump = remember { Animatable(1f) }
+    val bumpScope = rememberCoroutineScope()
+
     observeLiveData(editorViewModel.stage) {
         restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
+
+        if (it === EditStage.COMMITTING_SPENT && spendDrop.barTarget != null) {
+            bumpScope.launch {
+                kotlinx.coroutines.delay(320)
+                bump.snapTo(1.05f)
+                bump.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 700f))
+            }
+        }
     }
 
     DisposableEffect(currency) {
@@ -136,6 +152,10 @@ fun RowScope.RestBudgetPill(
     } else {
         val balloonState = rememberBalloonState()
 
+        DisposableEffect(Unit) {
+            onDispose { spendDrop.barTarget = null }
+        }
+
         BalloonScope(
             modifier = Modifier.weight(1F),
             balloonState = balloonState,
@@ -153,7 +173,20 @@ fun RowScope.RestBudgetPill(
                 modifier = Modifier
                     .weight(1F)
                     .height(50.dp)
-                    .graphicsLayer { translationX = shake.value * 10.dp.toPx() },
+                    .onGloballyPositioned {
+                        val origin = it.positionInRoot()
+
+                        spendDrop.barTarget = Offset(
+                            origin.x + it.size.width * 0.8f,
+                            origin.y + it.size.height / 2f,
+                        )
+                        spendDrop.color = harmonizedColor.main
+                    }
+                    .graphicsLayer {
+                        translationX = shake.value * 10.dp.toPx()
+                        scaleX = bump.value
+                        scaleY = bump.value
+                    },
                 shape = CircleShape,
                 colors = CardDefaults.cardColors(
                     containerColor = harmonizedColor.container,

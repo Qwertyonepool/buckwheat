@@ -10,6 +10,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import com.danilkinkin.buckwheat.util.observeLiveData
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
@@ -37,7 +45,20 @@ fun Editor(
     val focusController = remember { FocusController() }
     val mode by editorViewModel.mode.observeAsState(EditMode.ADD)
 
-    Box(modifier = modifier.fillMaxSize()) {
+    val spendDrop = remember { SpendDropState() }
+    var dropKey by remember { mutableIntStateOf(0) }
+    var rootOffset by remember { mutableStateOf(Offset.Zero) }
+
+    observeLiveData(editorViewModel.stage) {
+        if (it === EditStage.COMMITTING_SPENT) dropKey++
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .onGloballyPositioned { rootOffset = it.positionInRoot() }
+    ) {
+        CompositionLocalProvider(LocalSpendDrop provides spendDrop) {
         Column(
             Modifier
                 .fillMaxHeight()
@@ -59,6 +80,9 @@ fun Editor(
             TaggingToolbar(editorFocusController = focusController)
             Spacer(Modifier.height(24.dp))
         }
+        }
+
+        SpendDropOverlay(state = spendDrop, dropKey = dropKey, rootOffset = rootOffset)
     }
 }
 
