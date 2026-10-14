@@ -72,6 +72,21 @@ fun RowScope.RestBudgetPill(
         onDispose { }
     }
 
+    val shake = remember { Animatable(0f) }
+    var previousState by remember { mutableStateOf(budgetState) }
+
+    LaunchedEffect(budgetState) {
+        val wasOver = previousState == DaileBudgetState.OVERDRAFT || previousState == DaileBudgetState.BUDGET_END
+        val isOver = budgetState == DaileBudgetState.OVERDRAFT || budgetState == DaileBudgetState.BUDGET_END
+
+        previousState = budgetState
+
+        if (isOver && !wasOver) {
+            shake.snapTo(1f)
+            shake.animateTo(0f, spring(dampingRatio = 0.2f, stiffness = 500f))
+        }
+    }
+
     val shift = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -137,7 +152,8 @@ fun RowScope.RestBudgetPill(
             Card(
                 modifier = Modifier
                     .weight(1F)
-                    .height(50.dp),
+                    .height(50.dp)
+                    .graphicsLayer { translationX = shake.value * 10.dp.toPx() },
                 shape = CircleShape,
                 colors = CardDefaults.cardColors(
                     containerColor = harmonizedColor.container,

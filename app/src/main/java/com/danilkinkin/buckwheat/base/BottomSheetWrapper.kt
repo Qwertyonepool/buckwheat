@@ -11,6 +11,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -52,7 +56,10 @@ fun BottomSheetWrapper(
     name: String,
     appViewModel: AppViewModel = viewModel(),
     cancelable: Boolean = true,
-    state: ModalBottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden),
+    state: ModalBottomSheetState = rememberModalBottomSheetState(
+        initialValue = ModalBottomSheetValue.Hidden,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 260f),
+    ),
     content: @Composable (state: ModalBottomSheetState) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -147,7 +154,21 @@ fun BottomSheetWrapper(
                 confirmChange = { statusBarFillProgress > 0.5F },
             )
 
-            Box {
+            val enter = remember { Animatable(0f) }
+
+            LaunchedEffect(Unit) {
+                enter.animateTo(
+                    1f,
+                    spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow),
+                )
+            }
+
+            Box(
+                Modifier.graphicsLayer {
+                    alpha = enter.value.coerceIn(0f, 1f)
+                    translationY = (1f - enter.value) * 36.dp.toPx()
+                }
+            ) {
                 CompositionLocalProvider(
                     LocalBottomSheetScrollState provides BottomSheetScrollState(
                         topPadding = statusBarHeight * statusBarFillProgress,
