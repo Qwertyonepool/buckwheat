@@ -47,12 +47,12 @@ fun BackgroundProgress(
     val percentWithoutNewSpentAnimated by animateFloatAsState(
         label = "percentRealAnim",
         targetValue = percentWithoutNewSpent,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 90f),
     )
     val percentWithNewSpentAnimated = animateFloatAsState(
         label = "percentWithNewSpentAnimated",
         targetValue = percentWithNewSpent,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 90f),
     ).value
 
     val shift = remember { Animatable(0f) }
@@ -121,7 +121,7 @@ fun BackgroundProgress(
         Box(
             modifier = Modifier
                 .background(
-                    harmonizedColor.main.copy(alpha = 0.42f),
+                    harmonizedColor.main.copy(alpha = 0.7f),
                     shape = WavyShape(
                         period = 30.dp,
                         amplitude = percentWithNewSpentAnimated.clamp(0.96f, 1f) * 2.dp,
