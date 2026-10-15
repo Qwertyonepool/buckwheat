@@ -128,9 +128,13 @@ fun updateAnimatedItemsState(
             }
 
             override fun onChanged(position: Int, count: Int, payload: Any?) {
+                // Replace the row instead of mutating it: the rows are shared with the
+                // current state, so a mutation made the new list equal to the old one and the
+                // UI kept showing the previous day total
                 for (i in 0 until count) {
-                    compositeList[position + i].item.dayTotal = (payload as RowEntity).dayTotal
-                    compositeList[position + i].item.contentHash = payload.contentHash
+                    compositeList[position + i] = compositeList[position + i].copy(
+                        item = payload as RowEntity,
+                    )
                 }
             }
         })

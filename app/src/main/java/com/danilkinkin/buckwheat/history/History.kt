@@ -83,7 +83,7 @@ fun History(
                             RowEntity(
                                 type = RowEntityType.DayTotal,
                                 key = "total-${lastSpentDate}",
-                                contentHash = "total-${lastSpentDate}",
+                                contentHash = "total-${lastSpentDate}-${lastDayTotal}",
                                 transaction = null,
                                 day = lastSpentDate!!,
                                 dayTotal = lastDayTotal,
@@ -112,7 +112,7 @@ fun History(
                     RowEntity(
                         type = RowEntityType.Spent,
                         key = "spent-${spent.uid}",
-                        contentHash = "spent-${spent.uid}",
+                        contentHash = "spent-${spent.uid}-${spent.value}-${spent.date.time}-${spent.comment}",
                         transaction = spent,
                         day = lastSpentDate!!,
                         dayTotal = null,
@@ -125,7 +125,7 @@ fun History(
                 RowEntity(
                     type = RowEntityType.DayTotal,
                     key = "total-${lastSpentDate!!}",
-                    contentHash = "total-${lastSpentDate}",
+                    contentHash = "total-${lastSpentDate}-${lastDayTotal}",
                     transaction = null,
                     day = lastSpentDate!!,
                     dayTotal = lastDayTotal,
