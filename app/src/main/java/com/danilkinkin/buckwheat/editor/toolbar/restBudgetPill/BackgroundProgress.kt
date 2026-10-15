@@ -2,8 +2,6 @@ package com.danilkinkin.buckwheat.editor.toolbar.restBudgetPill
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FloatTweenSpec
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.TweenSpec
@@ -18,9 +16,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Path
@@ -32,7 +33,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.danilkinkin.buckwheat.base.WavyShape
 import com.danilkinkin.buckwheat.util.HarmonizedColorPalette
 import com.danilkinkin.buckwheat.util.clamp
-import kotlinx.coroutines.launch
 import kotlin.math.ceil
 
 
@@ -57,22 +57,23 @@ fun BackgroundProgress(
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 90f),
     )
 
+    // Move the wavy edge for a few seconds after the bar changes, then let it rest. It used to
+    // loop forever, which redrew the screen continuously even while the app sat idle.
     val shift = remember { Animatable(0f) }
-    val coroutineScope = rememberCoroutineScope()
+    var lastReadyValues by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
-    LaunchedEffect(Unit) {
-        fun anim() {
-            coroutineScope.launch {
-                shift.animateTo(
-                    1f,
-                    animationSpec = FloatTweenSpec(4000, 0, LinearEasing)
-                )
-                shift.snapTo(0f)
-                anim()
-            }
-        }
+    LaunchedEffect(percentWithNewSpent, percentWithoutNewSpent, ready) {
+        if (!ready) return@LaunchedEffect
 
-        anim()
+        val values = percentWithNewSpent to percentWithoutNewSpent
+        val previous = lastReadyValues
+
+        lastReadyValues = values
+
+        // the first real values arrive at start: nothing changed for the user yet
+        if (previous == null || previous == values) return@LaunchedEffect
+
+        shift.animateTo(shift.value + 1f, tween(3200, easing = LinearOutSlowInEasing))
     }
 
     Box(Modifier.fillMaxSize()) {

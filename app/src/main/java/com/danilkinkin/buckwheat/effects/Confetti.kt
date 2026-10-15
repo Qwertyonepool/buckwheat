@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import com.danilkinkin.buckwheat.ui.BuckwheatTheme
 import com.danilkinkin.buckwheat.ui.harmonize.hct.Hct
 import com.danilkinkin.buckwheat.ui.harmonize.palettes.TonalPalette
-import com.danilkinkin.buckwheat.util.animationTimeMillis
 import com.danilkinkin.buckwheat.util.harmonize
 import kotlinx.coroutines.delay
 import kotlin.math.*
@@ -184,8 +183,24 @@ fun Confetti(
     debug: Boolean = false,
 ) {
     val particles = remember<MutableList<Particle>> { mutableListOf() }
-    val timeStamp by animationTimeMillis()
+    // The overlay is always composed. Its clock used to tick on every frame even with no
+    // particles, which kept redrawing the whole screen while the app sat idle; now it runs
+    // only while there is something to animate and resumes where it stopped.
+    var timeStamp by remember { mutableStateOf(0L) }
+    var clockRunning by remember { mutableStateOf(false) }
     var lastTimeStamp by remember { mutableStateOf(timeStamp) }
+
+    LaunchedEffect(clockRunning) {
+        if (!clockRunning) return@LaunchedEffect
+
+        val start = withFrameMillis { it } - timeStamp
+
+        while (particles.isNotEmpty()) {
+            withFrameMillis { frameTime -> timeStamp = frameTime - start }
+        }
+
+        clockRunning = false
+    }
     val defaultColors = generateColors()
 
     LaunchedEffect(controller) {
@@ -221,6 +236,8 @@ fun Confetti(
                     it.mustDestroy = true
                 }
             }
+
+            clockRunning = true
         }
 
         while (true) {

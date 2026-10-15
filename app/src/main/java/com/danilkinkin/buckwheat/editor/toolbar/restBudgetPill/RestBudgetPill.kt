@@ -142,23 +142,8 @@ fun RowScope.RestBudgetPill(
         }
     }
 
-    val shift = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
-        fun anim() {
-            coroutineScope.launch {
-                shift.animateTo(
-                    1f,
-                    animationSpec = FloatTweenSpec(4000, 0, LinearEasing)
-                )
-                shift.snapTo(0f)
-                anim()
-            }
-        }
-
-        anim()
-    }
     // Slow and soft while the budget is fine; when it goes over, the color has to arrive
     // together with the shake, otherwise the bar stays green under an overspend label
     val isOverBudget = budgetState == DaileBudgetState.OVERDRAFT || budgetState == DaileBudgetState.BUDGET_END
