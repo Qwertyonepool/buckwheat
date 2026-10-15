@@ -125,7 +125,8 @@ fun prettyDate(
     val timeFormatter = if (DateFormat.is24HourFormat(LocalContext.current)) {
         DateTimeFormatter.ofPattern("HH:mm", locale)
     } else {
-        DateTimeFormatter.ofPattern("KK:mm", locale)
+        // "KK" counts hours 0-11 with no AM/PM: 12:02 PM showed as "00:02"
+        DateTimeFormatter.ofPattern("h:mm a", locale)
     }
 
 
