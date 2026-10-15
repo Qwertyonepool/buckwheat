@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,7 +68,21 @@ fun BottomSheetWrapper(
     observeLiveData(appViewModel.sheetStates) { sheets ->
         if (sheets.containsKey(name)) {
             state.bindCallback(sheets[name]!!.callback)
-            coroutineScope.launch { state.show(sheets[name]!!.args) }
+            coroutineScope.launch {
+                val wasRendered = state.render
+
+                state.show(sheets[name]!!.args)
+
+                // `render` does not change for a sheet that is still rendered but hidden,
+                // so the effect below would not start the show animation again
+                if (
+                    wasRendered
+                    && !state.isAnimationRunning
+                    && state.currentValue === ModalBottomSheetValue.Hidden
+                ) {
+                    state.realShow()
+                }
+            }
         } else if (state.targetValue !== ModalBottomSheetValue.Hidden) {
             coroutineScope.launch { state.hide() }
         }
@@ -86,6 +101,31 @@ fun BottomSheetWrapper(
         }
 
         onDispose { }
+    }
+
+    // If the opening is interrupted (a tap on the scrim, back) before the sheet reaches
+    // Expanded, currentValue never leaves Hidden and the effect above never fires: the sheet
+    // stays rendered and registered as open, and later opens are ignored. Clean up whenever
+    // the sheet settles hidden after having moved.
+    LaunchedEffect(state) {
+        var hasMoved = false
+
+        snapshotFlow {
+            state.isAnimationRunning
+                    || state.currentValue !== ModalBottomSheetValue.Hidden
+                    || state.targetValue !== ModalBottomSheetValue.Hidden
+        }.collect { moving ->
+            if (moving) {
+                hasMoved = true
+            } else if (hasMoved) {
+                hasMoved = false
+
+                if (state.render) {
+                    state.render = false
+                    appViewModel.closeSheet(name)
+                }
+            }
+        }
     }
 
     if (!state.render) return
