@@ -15,6 +15,8 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -27,10 +29,13 @@ import com.danilkinkin.buckwheat.R
 import com.danilkinkin.buckwheat.ui.BuckwheatTheme
 import com.danilkinkin.buckwheat.util.countDays
 import com.danilkinkin.buckwheat.util.countDaysToToday
+import com.danilkinkin.buckwheat.util.rememberReveal
 import com.danilkinkin.buckwheat.util.toDate
 import java.time.LocalDate
 import java.util.*
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DaysLeftCard(
     modifier: Modifier = Modifier,
@@ -43,6 +48,13 @@ fun DaysLeftCard(
 
     val days = countDays(finishDate!!, startDate)
     val restDays = countDaysToToday(finishDate)
+
+    // The ring shows the days left, like the label. It sweeps in and the number counts up when
+    // the card appears. The wave itself stays still: the indicator resets its phase when
+    // waveSpeed changes, so stopping a moving wave made it jump at the end of the sweep.
+    val reveal = rememberReveal()
+    val left = (restDays / days.toFloat()).coerceIn(0f, 1f)
+    val ringStroke = with(localDensity) { Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round) }
 
     Box(
         Modifier
@@ -61,17 +73,18 @@ fun DaysLeftCard(
             val textColor = LocalContentColor.current
 
             Box(Modifier.fillMaxSize()) {
-                Box(
+                CircularWavyProgressIndicator(
+                    progress = { left * reveal.value },
                     modifier = Modifier
-                        .background(
-                            MaterialTheme.colorScheme.primary,
-                            shape = ArcShape(
-                                thickness = 6.dp,
-                                progress = restDays / days.toFloat(),
-                            ),
-                        )
-                        .fillMaxHeight()
-                        .fillMaxWidth(),
+                        .fillMaxSize()
+                        .padding(6.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    stroke = ringStroke,
+                    trackStroke = ringStroke,
+                    // the default flattens the wave below 10% and above 95%: a full ring on the
+                    // first days of a period would be a plain circle again
+                    amplitude = { if (it > 0f) 1f else 0f },
+                    waveSpeed = 0.dp,
                 )
 
                 Column(
@@ -81,7 +94,7 @@ fun DaysLeftCard(
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = restDays.toString(),
+                        text = (restDays * reveal.value).roundToInt().toString(),
                         style = MaterialTheme.typography.displayLarge.copy(
                             fontSize = MaterialTheme.typography.titleLarge.fontSize
                         )
@@ -96,43 +109,6 @@ fun DaysLeftCard(
             }
         }
     }
-}
-
-class ArcShape(
-    private val thickness: Dp,
-    private val progress: Float,
-) : Shape {
-    override fun createOutline(
-        size: Size,
-        layoutDirection: LayoutDirection,
-        density: Density,
-    ) = Outline.Generic(Path().apply {
-        val fixedProgress = progress - 0.000001f
-        val thicknessPx = with(density) { thickness.toPx() }
-        val shift = -90f
-
-        val wavyPath = Path().apply {
-            arcTo(
-                Rect(offset = Offset.Zero, size = size),
-                shift,
-                -360 * fixedProgress,
-                forceMoveTo = true,
-            )
-            arcTo(
-                Rect(
-                    offset = Offset(thicknessPx, thicknessPx),
-                    size = Size(width = size.width - thicknessPx * 2, height = size.height - thicknessPx * 2),
-                ),
-                -360 * fixedProgress + shift,
-                360 * fixedProgress,
-                forceMoveTo = false,
-            )
-        }
-        val boundsPath = Path().apply {
-            addRect(Rect(offset = Offset.Zero, size = size))
-        }
-        op(wavyPath, boundsPath, PathOperation.Intersect)
-    })
 }
 
 @Preview

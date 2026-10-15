@@ -17,6 +17,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -34,6 +36,8 @@ import com.danilkinkin.buckwheat.util.harmonize
 import com.danilkinkin.buckwheat.util.isZero
 import com.danilkinkin.buckwheat.util.numberFormat
 import com.danilkinkin.buckwheat.util.prettyDate
+import com.danilkinkin.buckwheat.util.rememberReveal
+import com.danilkinkin.buckwheat.util.revealed
 import com.danilkinkin.buckwheat.util.toDate
 import com.danilkinkin.buckwheat.util.toPalette
 import java.math.BigDecimal
@@ -74,12 +78,15 @@ fun MinMaxSpentCard(
         )
     )
 
+    // the amount counts up and the chart behind it rises when the card appears
+    val reveal = rememberReveal()
+
     StatCard(
         modifier = modifier,
         value = if (spent != null) {
             numberFormat(
                 context,
-                spent.value,
+                revealed(spent.value, reveal.value),
                 currency = currency,
             )
         } else {
@@ -127,6 +134,10 @@ fun MinMaxSpentCard(
             if (spends.isNotEmpty()) {
                 SpendsChart(
                     modifier = Modifier
+                        .graphicsLayer {
+                            scaleY = reveal.value.coerceIn(0f, 1f)
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        }
                         .fillMaxHeight()
                         .fillMaxWidth(),
                     spends = spends,

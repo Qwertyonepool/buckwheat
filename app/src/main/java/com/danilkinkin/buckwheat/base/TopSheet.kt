@@ -333,7 +333,7 @@ fun TopSheetLayout(
                                 1f,
                                 spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
-                                    stiffness = 120f,
+                                    stiffness = 140f,
                                 ),
                             )
                             nudge.animateTo(
@@ -350,7 +350,8 @@ fun TopSheetLayout(
                     BalloonScope(
                         Modifier
                             .height(5.dp)
-                            .width(72.dp)
+                            // room for the handle at full stretch (56 + 24 dp)
+                            .width(88.dp)
                             .align(Alignment.Center),
                         balloonState = balloonState,
                         content = {
@@ -367,14 +368,16 @@ fun TopSheetLayout(
                             Modifier
                                 .graphicsLayer {
                                     // drawing-phase only: no recomposition while nudging
-                                    translationY = nudge.value * 5.dp.toPx()
-                                    scaleX = 1f + 0.12f * nudge.value
+                                    translationY = nudge.value * 6.dp.toPx()
+                                    scaleX = 1f + 0.16f * nudge.value
+                                    // 0.5 at rest (0.72 x 0.7), brightening to 0.7 at the dip
+                                    alpha = 0.72f + 0.28f * nudge.value
                                 }
                                 .height(5.dp)
-                                .width((40f + 24f * progress).dp)
+                                .width((56f + 24f * progress).dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        .copy(alpha = if (lockDraggable.value) 0f else 0.5f),
+                                        .copy(alpha = if (lockDraggable.value) 0f else 0.7f),
                                     shape = CircleShape
                                 )
                                 .align(Alignment.Center)

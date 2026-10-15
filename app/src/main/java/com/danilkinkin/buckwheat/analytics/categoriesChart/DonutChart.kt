@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.danilkinkin.buckwheat.util.rememberReveal
 import java.math.RoundingMode
 
 @Composable
@@ -36,7 +37,12 @@ fun DonutChart(
         with(localDensity) { chartPadding.calculateStartPadding(layoutDirection).toPx() }
     val endOffset = with(localDensity) { chartPadding.calculateEndPadding(layoutDirection).toPx() }
 
+    // the ring is drawn around once when it appears
+    val reveal = rememberReveal()
+
     Canvas(modifier = modifier) {
+        val drawnAngle = 360f * reveal.value
+
         val width = this.size.width
         val height = this.size.height
         val heightWithPaddings = height - topOffset - bottomOffset
@@ -79,11 +85,12 @@ fun DonutChart(
 
         items.forEachIndexed { index, tag ->
             val sweepAngle = itemAngles[index]
+            val visibleSweep = (drawnAngle - offset).coerceIn(0f, sweepAngle)
 
             drawArc(
                 tag.color?.main ?: Color.Black,
                 startAngle = offset + halfGap + offsetAngle,
-                sweepAngle = sweepAngle - gap,
+                sweepAngle = (visibleSweep - gap).coerceAtLeast(0f),
                 useCenter = false,
                 topLeft = Offset(startOffset + halfStrokeWidth, topOffset + halfStrokeWidth),
                 size = Size(widthWithPaddings - strokeWidth, heightWithPaddings - strokeWidth),

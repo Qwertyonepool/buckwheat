@@ -18,6 +18,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.danilkinkin.buckwheat.util.rememberReveal
+import kotlin.math.roundToInt
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.danilkinkin.buckwheat.R
 import com.danilkinkin.buckwheat.data.AppViewModel
@@ -31,6 +33,8 @@ fun SpendsCountCard(
     count: Int,
     appViewModel: AppViewModel = hiltViewModel(),
 ) {
+    val reveal = rememberReveal()
+
     Card(
         modifier = modifier.height(IntrinsicSize.Min),
         shape = CircleShape,
@@ -56,7 +60,7 @@ fun SpendsCountCard(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = count.toString(),
+                    text = (count * reveal.value).roundToInt().toString(),
                     style = MaterialTheme.typography.displayMedium,
                     fontSize = MaterialTheme.typography.titleLarge.fontSize,
 

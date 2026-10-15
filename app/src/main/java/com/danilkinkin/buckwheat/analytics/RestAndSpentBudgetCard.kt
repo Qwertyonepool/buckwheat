@@ -67,6 +67,9 @@ fun RestAndSpentBudgetCard(
 
     val percent = remember (restBudget) { restBudget.divide(wholeBudget, 4, RoundingMode.HALF_EVEN) }
 
+    // the fill grows and the numbers count up when the card appears
+    val reveal = rememberReveal()
+
     val overString = stringResource(R.string.over)
     val coroutineScope = rememberCoroutineScope()
 
@@ -75,11 +78,14 @@ fun RestAndSpentBudgetCard(
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 0
 
-        val percentCalculated = if (isSpent) {
-            BigDecimal(1).minus(percent).multiply(BigDecimal(100))
-        } else {
-            percent.multiply(BigDecimal(100))
-        }
+        val percentCalculated = revealed(
+            if (isSpent) {
+                BigDecimal(1).minus(percent).multiply(BigDecimal(100))
+            } else {
+                percent.multiply(BigDecimal(100))
+            },
+            reveal.value,
+        )
 
         return if (percentCalculated.abs() > BigDecimal(1000)) {
             "$overString ${formatter.format(percentCalculated.coerceIn(BigDecimal(-1000), BigDecimal(1000)))}"
@@ -188,7 +194,7 @@ fun RestAndSpentBudgetCard(
                                 ),
                             )
                             .fillMaxHeight()
-                            .fillMaxWidth(percent.toFloat()),
+                            .fillMaxWidth((percent.toFloat() * reveal.value).coerceIn(0f, 1f)),
                     )
                 }
 
@@ -227,11 +233,10 @@ fun RestAndSpentBudgetCard(
                     Text(
                         text = numberFormat(
                             context,
-                            if (isSpent) {
-                                wholeBudget - restBudget
-                            } else {
-                                restBudget
-                            },
+                            revealed(
+                                if (isSpent) wholeBudget - restBudget else restBudget,
+                                reveal.value,
+                            ),
                             currency = currency,
                         ),
                         style = MaterialTheme.typography.displayMedium,

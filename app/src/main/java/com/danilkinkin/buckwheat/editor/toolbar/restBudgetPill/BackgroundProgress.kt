@@ -73,7 +73,8 @@ fun BackgroundProgress(
         // the first real values arrive at start: nothing changed for the user yet
         if (previous == null || previous == values) return@LaunchedEffect
 
-        shift.animateTo(shift.value + 1f, tween(3200, easing = LinearOutSlowInEasing))
+        // two waves over 7 s, slowing to a stop: long enough to be noticed after a spend
+        shift.animateTo(shift.value + 2f, tween(7000, easing = LinearOutSlowInEasing))
     }
 
     // The wave repeats every 1.0 of shift, but its path only covers the bar for shifts in
