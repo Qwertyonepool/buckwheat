@@ -5,10 +5,13 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.*
+import kotlin.coroutines.cancellation.CancellationException
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.livedata.observeAsState
@@ -137,29 +140,50 @@ fun CurrentSpendEditor(
         }
     }
 
-    val spendDrop = LocalSpendDrop.current
+    val spendFlight = LocalSpendFlight.current
+    val amountLayer = rememberGraphicsLayer()
 
-    BoxWithConstraints(
-        modifier.onGloballyPositioned {
-            val origin = it.positionInRoot()
+    // Keep a capture of the amount as drawn, ready for the moment it is committed
+    LaunchedEffect(rawValue) {
+        spendFlight.captured = null
 
-            spendDrop.amountAnchor = Offset(
-                origin.x + it.size.width - with(localDensity) { 72.dp.toPx() },
-                origin.y + it.size.height / 2f,
-            )
+        if (rawValue.isNullOrEmpty()) return@LaunchedEffect
+
+        // let the field draw the new value first
+        withFrameNanos { }
+        withFrameNanos { }
+
+        val bounds = spendFlight.amountBounds ?: return@LaunchedEffect
+        val maxCursorWidth = with(localDensity) { 4.dp.roundToPx() }
+
+        spendFlight.captured = try {
+            captureAmount(amountLayer, rawValue, bounds.topLeft, maxCursorWidth)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
         }
-    ) {
+    }
+
+    BoxWithConstraints(modifier) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.CenterEnd,
         ) {
             if (!hide) {
                 EditableTextWithLabel(
-                    modifier = Modifier.graphicsLayer {
-                        scaleX = amountPop.value
-                        scaleY = amountPop.value
-                        transformOrigin = TransformOrigin(1f, 0.5f)
-                    },
+                    modifier = Modifier
+                        // outside the pop scale, so the bounds match the unscaled capture
+                        .onGloballyPositioned { spendFlight.amountBounds = it.boundsInRoot() }
+                        .graphicsLayer {
+                            scaleX = amountPop.value
+                            scaleY = amountPop.value
+                            transformOrigin = TransformOrigin(1f, 0.5f)
+                        }
+                        .drawWithContent {
+                            amountLayer.record { this@drawWithContent.drawContent() }
+                            drawLayer(amountLayer)
+                        },
                     value = spentValue,
                     onChangeValue = {
                         val fixed = fixedNumberString(it)

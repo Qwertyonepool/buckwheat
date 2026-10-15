@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.danilkinkin.buckwheat.di.SpendsRepository
 import com.danilkinkin.buckwheat.util.numberFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -37,10 +38,15 @@ class RestBudgetPillViewModel @Inject constructor(
     var newDailyBudget = MutableLiveData("")
         private set
 
+    private var calculation: Job? = null
+
     fun calculateValues(context: Context, currentSpent: BigDecimal) {
         val ths = this
 
-        viewModelScope.launch {
+        // Calculations suspend on several reads and were launched in parallel, so an older one
+        // (e.g. with no amount typed yet) could finish last and overwrite the current preview
+        calculation?.cancel()
+        calculation = viewModelScope.launch {
             val budget = spendsRepository.getBudget().first()
             val spentFromDailyBudget = spendsRepository.getSpentFromDailyBudget().first()
             val dailyBudget = spendsRepository.getDailyBudget().first()

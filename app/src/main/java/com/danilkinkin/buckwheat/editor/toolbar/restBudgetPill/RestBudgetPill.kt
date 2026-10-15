@@ -6,8 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.danilkinkin.buckwheat.editor.LocalSpendDrop
-import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import com.danilkinkin.buckwheat.editor.LocalSpendFlight
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ import com.danilkinkin.buckwheat.ui.*
 import com.danilkinkin.buckwheat.util.*
 import com.danilkinkin.buckwheat.wallet.WALLET_SHEET
 import kotlinx.coroutines.delay
+import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,6 +51,7 @@ fun RowScope.RestBudgetPill(
     restBudgetPillViewModel: RestBudgetPillViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val localDensity = LocalDensity.current
 
     val hideOverspendingWarn by spendsViewModel.hideOverspendingWarn.observeAsState(false)
     val currency by spendsViewModel.currency.observeAsState(ExtendCurrency.none())
@@ -57,20 +60,34 @@ fun RowScope.RestBudgetPill(
     val percentWithNewSpent by restBudgetPillViewModel.percentWithNewSpent.observeAsState(1f)
     val tutorial by appViewModel.getTutorialStage(TUTORS.OPEN_WALLET).observeAsState(TUTORIAL_STAGE.NONE)
 
+    // Right after a commit the editor resets and refocuses before the saved spend reaches
+    // spentFromDailyBudget. Recalculating in between shows the budget without the spend for a
+    // moment, and the animated bar visibly jumps back and forth. Hold the shown result until
+    // the saved spend arrives, unless a new amount is being typed.
+    var awaitingSavedSpend by remember { mutableStateOf(false) }
+    var spentAtCommit by remember { mutableStateOf<BigDecimal?>(null) }
+
+    fun recalculate() = restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
+    fun holdResult() = awaitingSavedSpend && editorViewModel.currentSpent.signum() == 0
+
     observeLiveData(spendsViewModel.dailyBudget) {
-        restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
+        if (!holdResult()) recalculate()
     }
 
     observeLiveData(spendsViewModel.spentFromDailyBudget) {
-        restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
+        // the previous total re-emitted is not the saved spend yet
+        if (awaitingSavedSpend && it == spentAtCommit) return@observeLiveData
+
+        awaitingSavedSpend = false
+        recalculate()
     }
 
-    val spendDrop = LocalSpendDrop.current
+    val spendFlight = LocalSpendFlight.current
     val bump = remember { Animatable(1f) }
     val bumpScope = rememberCoroutineScope()
 
     observeLiveData(editorViewModel.stage) {
-        restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
+        if (!holdResult()) recalculate()
     }
 
     var lastSeenCommit by remember { mutableIntStateOf(editorViewModel.spentCommitted.value ?: 0) }
@@ -78,12 +95,25 @@ fun RowScope.RestBudgetPill(
     observeLiveData(editorViewModel.spentCommitted) {
         if (it > lastSeenCommit) {
             lastSeenCommit = it
+            spentAtCommit = spendsViewModel.spentFromDailyBudget.value
+            awaitingSavedSpend = true
 
-            if (spendDrop.barTarget != null) {
+            // an edit can leave today's total unchanged: never hold longer than this
+            bumpScope.launch {
+                delay(1000)
+
+                if (awaitingSavedSpend) {
+                    awaitingSavedSpend = false
+                    recalculate()
+                }
+            }
+
+            // the flying amount reaches the bar about 200 ms in (emphasized easing)
+            if (spendFlight.barTarget != null) {
                 bumpScope.launch {
-                    kotlinx.coroutines.delay(400)
-                    bump.snapTo(1.06f)
-                    bump.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 700f))
+                    delay(200)
+                    bump.snapTo(1.04f)
+                    bump.animateTo(1f, spring(dampingRatio = 0.5f, stiffness = 900f))
                 }
             }
         }
@@ -168,7 +198,7 @@ fun RowScope.RestBudgetPill(
         val balloonState = rememberBalloonState()
 
         DisposableEffect(Unit) {
-            onDispose { spendDrop.barTarget = null }
+            onDispose { spendFlight.barTarget = null }
         }
 
         BalloonScope(
@@ -189,13 +219,14 @@ fun RowScope.RestBudgetPill(
                     .weight(1F)
                     .height(50.dp)
                     .onGloballyPositioned {
-                        val origin = it.positionInRoot()
+                        val bounds = it.boundsInRoot()
 
-                        spendDrop.barTarget = Offset(
-                            origin.x + it.size.width * 0.8f,
-                            origin.y + it.size.height / 2f,
+                        spendFlight.barTarget = Offset(
+                            bounds.right - with(localDensity) { 20.dp.toPx() },
+                            bounds.center.y,
                         )
-                        spendDrop.color = harmonizedColor.main
+                        // digit height of the value label, measured on screen: ~37% of the bar
+                        spendFlight.barValueHeight = bounds.height * 0.37f
                     }
                     .graphicsLayer {
                         translationX = shake.value * 10.dp.toPx()

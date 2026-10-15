@@ -45,17 +45,33 @@ fun Editor(
     val focusController = remember { FocusController() }
     val mode by editorViewModel.mode.observeAsState(EditMode.ADD)
 
-    val spendDrop = remember { SpendDropState() }
-    var dropKey by remember { mutableIntStateOf(0) }
+    val spendFlightState = remember { SpendFlightState() }
+    var spendFlight by remember { mutableStateOf<SpendFlight?>(null) }
     var rootOffset by remember { mutableStateOf(Offset.Zero) }
 
     var lastSeenCommit by remember { mutableIntStateOf(editorViewModel.spentCommitted.value ?: 0) }
 
     observeLiveData(editorViewModel.spentCommitted) {
-        if (it > lastSeenCommit) {
-            lastSeenCommit = it
-            dropKey++
+        if (it <= lastSeenCommit) return@observeLiveData
+        lastSeenCommit = it
+
+        // Called synchronously from the commit, before the field is cleared, so the flight
+        // starts on the same frame the amount disappears from the field
+        val captured = spendFlightState.captured ?: return@observeLiveData
+        val target = spendFlightState.barTarget ?: return@observeLiveData
+
+        // committed faster than the capture after the last key press: skip rather than show
+        // an outdated amount
+        if (captured.rawValue != editorViewModel.rawSpentValue.value) return@observeLiveData
+
+        val barValueHeight = spendFlightState.barValueHeight
+        val endScale = if (barValueHeight > 0f) {
+            (barValueHeight / captured.image.height).coerceIn(0.15f, 0.6f)
+        } else {
+            0.25f
         }
+
+        spendFlight = SpendFlight(captured, target, endScale)
     }
 
     Box(
@@ -63,7 +79,7 @@ fun Editor(
             .fillMaxSize()
             .onGloballyPositioned { rootOffset = it.positionInRoot() }
     ) {
-        CompositionLocalProvider(LocalSpendDrop provides spendDrop) {
+        CompositionLocalProvider(LocalSpendFlight provides spendFlightState) {
         Column(
             Modifier
                 .fillMaxHeight()
@@ -87,7 +103,7 @@ fun Editor(
         }
         }
 
-        SpendDropOverlay(state = spendDrop, dropKey = dropKey, rootOffset = rootOffset)
+        SpendFlightOverlay(flight = spendFlight, rootOffset = rootOffset)
     }
 }
 
