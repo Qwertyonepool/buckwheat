@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.danilkinkin.buckwheat.editor.LocalSpendDrop
-import com.danilkinkin.buckwheat.editor.EditStage
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.livedata.observeAsState
@@ -72,7 +71,6 @@ fun RowScope.RestBudgetPill(
 
     observeLiveData(editorViewModel.stage) {
         restBudgetPillViewModel.calculateValues(context, editorViewModel.currentSpent)
-
     }
 
     var lastSeenCommit by remember { mutableIntStateOf(editorViewModel.spentCommitted.value ?: 0) }
@@ -101,12 +99,14 @@ fun RowScope.RestBudgetPill(
     var previousState by remember { mutableStateOf(budgetState) }
 
     LaunchedEffect(budgetState) {
-        val wasOver = previousState == DaileBudgetState.OVERDRAFT || previousState == DaileBudgetState.BUDGET_END
         val isOver = budgetState == DaileBudgetState.OVERDRAFT || budgetState == DaileBudgetState.BUDGET_END
+
+        // Only a change made right now: NOT_SET means the values are still loading at start
+        val crossedIntoOver = isOver && previousState == DaileBudgetState.NORMAL
 
         previousState = budgetState
 
-        if (isOver && !wasOver) {
+        if (crossedIntoOver) {
             shake.snapTo(1f)
             shake.animateTo(0f, spring(dampingRatio = 0.2f, stiffness = 500f))
         }
@@ -129,11 +129,17 @@ fun RowScope.RestBudgetPill(
 
         anim()
     }
-    val percentWithNewSpentAnimated = animateFloatAsState(
-        label = "percentWithNewSpentAnimated",
-        targetValue = percentWithNewSpent,
-        animationSpec = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
-    ).value
+    // Slow and soft while the budget is fine; when it goes over, the color has to arrive
+    // together with the shake, otherwise the bar stays green under an overspend label
+    val isOverBudget = budgetState == DaileBudgetState.OVERDRAFT || budgetState == DaileBudgetState.BUDGET_END
+    val percentWithNewSpentAnimated = animateFloatAfterFirstValue(
+        target = percentWithNewSpent,
+        ready = budgetState != DaileBudgetState.NOT_SET,
+        animationSpec = tween(
+            durationMillis = if (isOverBudget) 450 else 1500,
+            easing = FastOutSlowInEasing,
+        ),
+    )
 
     val harmonizedColor = toPalette(
         harmonize(

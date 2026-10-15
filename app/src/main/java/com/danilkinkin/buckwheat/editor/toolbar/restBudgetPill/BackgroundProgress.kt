@@ -43,17 +43,19 @@ fun BackgroundProgress(
 ) {
     val percentWithNewSpent by restBudgetPillViewModel.percentWithNewSpent.observeAsState(1f)
     val percentWithoutNewSpent by restBudgetPillViewModel.percentWithoutNewSpent.observeAsState(1f)
+    val budgetState by restBudgetPillViewModel.state.observeAsState(DaileBudgetState.NOT_SET)
+    val ready = budgetState != DaileBudgetState.NOT_SET
 
-    val percentWithoutNewSpentAnimated by animateFloatAsState(
-        label = "percentRealAnim",
-        targetValue = percentWithoutNewSpent,
+    val percentWithoutNewSpentAnimated = animateFloatAfterFirstValue(
+        target = percentWithoutNewSpent,
+        ready = ready,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 90f),
     )
-    val percentWithNewSpentAnimated = animateFloatAsState(
-        label = "percentWithNewSpentAnimated",
-        targetValue = percentWithNewSpent,
+    val percentWithNewSpentAnimated = animateFloatAfterFirstValue(
+        target = percentWithNewSpent,
+        ready = ready,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 90f),
-    ).value
+    )
 
     val shift = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
