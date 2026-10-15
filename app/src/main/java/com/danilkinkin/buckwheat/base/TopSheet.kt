@@ -328,21 +328,22 @@ fun TopSheetLayout(
                         delay(1500)
                         while (nudgesLeft > 0) {
                             nudgesLeft--
+                            // a slow, unbouncy dip: it should read as a hint, not an alert
                             nudge.animateTo(
                                 1f,
                                 spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMedium,
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = 120f,
                                 ),
                             )
                             nudge.animateTo(
                                 0f,
                                 spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessLow,
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = 80f,
                                 ),
                             )
-                            delay(4500)
+                            delay(6000)
                         }
                     }
 
@@ -366,8 +367,8 @@ fun TopSheetLayout(
                             Modifier
                                 .graphicsLayer {
                                     // drawing-phase only: no recomposition while nudging
-                                    translationY = nudge.value * 8.dp.toPx()
-                                    scaleX = 1f + 0.25f * nudge.value
+                                    translationY = nudge.value * 5.dp.toPx()
+                                    scaleX = 1f + 0.12f * nudge.value
                                 }
                                 .height(5.dp)
                                 .width((40f + 24f * progress).dp)

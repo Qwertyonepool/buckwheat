@@ -76,6 +76,11 @@ fun BackgroundProgress(
         shift.animateTo(shift.value + 1f, tween(3200, easing = LinearOutSlowInEasing))
     }
 
+    // The wave repeats every 1.0 of shift, but its path only covers the bar for shifts in
+    // [0, 1). The animation keeps adding 1, so from the second change on the edge slid down
+    // out of the bar and its corners were cut diagonally. Draw only the fractional part.
+    val wave = shift.value % 1f
+
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = percentWithNewSpent != percentWithoutNewSpent,
@@ -92,7 +97,7 @@ fun BackgroundProgress(
 
                                 moveTo(
                                     size.width - amplitude,
-                                    -halfPeriod * 2.5f + halfPeriod * 2 * shift.value
+                                    -halfPeriod * 2.5f + halfPeriod * 2 * wave
                                 )
                                 repeat(ceil(size.height / halfPeriod + 3).toInt()) { i ->
                                     relativeQuadraticBezierTo(
@@ -128,7 +133,7 @@ fun BackgroundProgress(
                     shape = WavyShape(
                         period = 30.dp,
                         amplitude = percentWithNewSpentAnimated.clamp(0.96f, 1f) * 2.dp,
-                        shift = shift.value,
+                        shift = wave,
                     ),
                 )
                 .fillMaxHeight()

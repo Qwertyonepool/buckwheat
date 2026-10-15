@@ -1,10 +1,23 @@
 package com.danilkinkin.buckwheat.analytics
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.FloatTweenSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
@@ -13,6 +26,9 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,27 +68,40 @@ fun RestAndSpentBudgetCard(
     val percent = remember (restBudget) { restBudget.divide(wholeBudget, 4, RoundingMode.HALF_EVEN) }
 
     val overString = stringResource(R.string.over)
+    val coroutineScope = rememberCoroutineScope()
 
-    val percentFormatted = remember(showSpentCard, percent) {
+    fun formatPercent(isSpent: Boolean): String {
         val formatter = NumberFormat.getNumberInstance(Locale.getDefault())
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 0
 
-        val percentCalculated = if (showSpentCard) {
+        val percentCalculated = if (isSpent) {
             BigDecimal(1).minus(percent).multiply(BigDecimal(100))
         } else {
             percent.multiply(BigDecimal(100))
         }
 
-        if (percentCalculated.abs() > BigDecimal(1000)) {
+        return if (percentCalculated.abs() > BigDecimal(1000)) {
             "$overString ${formatter.format(percentCalculated.coerceIn(BigDecimal(-1000), BigDecimal(1000)))}"
         } else {
             formatter.format(percentCalculated)
         }
     }
 
+    // Two pages, rest and spent, as the dots in the corner say: switch by tapping or by
+    // swiping towards the other page. The text follows the finger a little (bounded), so the
+    // card shows it can be swiped; past the threshold it switches, otherwise it springs back.
+    val density = LocalDensity.current
+    val switchThreshold = with(density) { 40.dp.toPx() }
+    val maxPull = with(density) { 24.dp.toPx() }
+    val drag = remember { Animatable(0f) }
+    val isSpentNow by rememberUpdatedState(showSpentCard)
+
+    fun releaseDrag() {
+        coroutineScope.launch { drag.animateTo(0f, spring(dampingRatio = 0.8f, stiffness = 400f)) }
+    }
+
     val shift = remember { Animatable(0f) }
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         fun anim() {
@@ -106,6 +135,25 @@ fun RestAndSpentBudgetCard(
         modifier = modifier
             .clip(shape = MaterialTheme.shapes.extraLarge)
             .clickable { appViewModel.setShowSpentCardByDefault(!showSpentCard) }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        // rest is the first page, spent the second: left goes forward
+                        val switch = if (isSpentNow) {
+                            drag.value > switchThreshold
+                        } else {
+                            drag.value < -switchThreshold
+                        }
+
+                        if (switch) appViewModel.setShowSpentCardByDefault(!isSpentNow)
+                        releaseDrag()
+                    },
+                    onDragCancel = { releaseDrag() },
+                ) { change, dragAmount ->
+                    change.consume()
+                    coroutineScope.launch { drag.snapTo(drag.value + dragAmount) }
+                }
+            }
     ) {
         Card(
             modifier = modifier,
@@ -144,6 +192,31 @@ fun RestAndSpentBudgetCard(
                     )
                 }
 
+                AnimatedContent(
+                    targetState = showSpentCard,
+                    modifier = Modifier.graphicsLayer {
+                        val towardsOther = if (showSpentCard) drag.value > 0 else drag.value < 0
+
+                        translationX = (drag.value * if (towardsOther) 0.4f else 0.12f)
+                            .coerceIn(-maxPull, maxPull)
+                    },
+                    transitionSpec = {
+                        // the spent page lies to the right of the rest page
+                        val direction = if (targetState) 1 else -1
+                        val slideSpec = spring(
+                            dampingRatio = 0.85f,
+                            stiffness = 500f,
+                            visibilityThreshold = IntOffset.VisibilityThreshold,
+                        )
+
+                        (slideInHorizontally(slideSpec) { direction * it / 3 } + fadeIn(tween(180)))
+                            .togetherWith(
+                                slideOutHorizontally(slideSpec) { -direction * it / 3 } + fadeOut(tween(120))
+                            )
+                            .using(SizeTransform(clip = false))
+                    },
+                    label = "restOrSpent",
+                ) { isSpent ->
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -154,7 +227,7 @@ fun RestAndSpentBudgetCard(
                     Text(
                         text = numberFormat(
                             context,
-                            if (showSpentCard) {
+                            if (isSpent) {
                                 wholeBudget - restBudget
                             } else {
                                 restBudget
@@ -168,7 +241,7 @@ fun RestAndSpentBudgetCard(
                         lineHeight = TextUnit(0.2f, TextUnitType.Em)
                     )
                     Text(
-                        text = if (showSpentCard) {
+                        text = if (isSpent) {
                             stringResource(R.string.spent_budget)
                         } else {
                             stringResource(R.string.rest_budget)
@@ -194,13 +267,14 @@ fun RestAndSpentBudgetCard(
                             Text(
                                 text = stringResource(
                                     R.string.rest_budget_percent,
-                                    percentFormatted
+                                    formatPercent(isSpent)
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontSize = if (bigVariant) MaterialTheme.typography.labelMedium.fontSize else MaterialTheme.typography.labelSmall.fontSize,
                             )
                         }
                     }
+                }
                 }
             }
         }
@@ -210,20 +284,26 @@ fun RestAndSpentBudgetCard(
                 .padding(16.dp)
                 .align(Alignment.TopEnd)
         ) {
+            // the current page's dot is longer, like a page indicator
+            val restDotWidth by animateDpAsState(if (showSpentCard) 4.dp else 10.dp, label = "restDot")
+            val spentDotWidth by animateDpAsState(if (showSpentCard) 10.dp else 4.dp, label = "spentDot")
+            val restDotAlpha by animateFloatAsState(if (showSpentCard) 0.3f else 1f, label = "restDotAlpha")
+            val spentDotAlpha by animateFloatAsState(if (showSpentCard) 1f else 0.3f, label = "spentDotAlpha")
+
             Box(
                 Modifier
-                    .size(4.dp)
+                    .size(width = restDotWidth, height = 4.dp)
                     .background(
-                        color = harmonizedColor.onContainer.copy(alpha = if (showSpentCard) 0.3f else 1f),
+                        color = harmonizedColor.onContainer.copy(alpha = restDotAlpha),
                         shape = CircleShape,
                     )
             )
             Spacer(Modifier.width(4.dp))
             Box(
                 Modifier
-                    .size(4.dp)
+                    .size(width = spentDotWidth, height = 4.dp)
                     .background(
-                        color = harmonizedColor.onContainer.copy(alpha = if (!showSpentCard) 0.3f else 1f),
+                        color = harmonizedColor.onContainer.copy(alpha = spentDotAlpha),
                         shape = CircleShape,
                     )
             )
