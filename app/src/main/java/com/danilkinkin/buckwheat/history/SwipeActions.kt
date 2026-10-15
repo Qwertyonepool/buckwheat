@@ -79,24 +79,29 @@ fun SwipeActions(
         mutableStateOf(null)
     }
 
-    val state = rememberDismissState(
-        confirmStateChange = {
-            onTried()
-            if (willDismissDirection == DismissDirection.StartToEnd
-                && it == DismissValue.DismissedToEnd
-            ) {
-                startActionsConfig.onDismiss()
-                startActionsConfig.stayDismissed
-            } else if (willDismissDirection == DismissDirection.EndToStart &&
-                it == DismissValue.DismissedToStart
-            ) {
-                endActionsConfig.onDismiss()
-                endActionsConfig.stayDismissed
-            } else {
-                false
-            }
-        }
-    )
+    // Not saveable on purpose: lazy list items restore saved state by key, so a deleted spend
+    // brought back with Undo came back still dismissed, showing only the delete background
+    val state = remember {
+        DismissState(
+            initialValue = DismissValue.Default,
+            confirmStateChange = {
+                onTried()
+                if (willDismissDirection == DismissDirection.StartToEnd
+                    && it == DismissValue.DismissedToEnd
+                ) {
+                    startActionsConfig.onDismiss()
+                    startActionsConfig.stayDismissed
+                } else if (willDismissDirection == DismissDirection.EndToStart &&
+                    it == DismissValue.DismissedToStart
+                ) {
+                    endActionsConfig.onDismiss()
+                    endActionsConfig.stayDismissed
+                } else {
+                    false
+                }
+            },
+        )
+    }
 
     var showingTutorial by remember {
         mutableStateOf(showTutorial)
