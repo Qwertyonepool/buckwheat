@@ -30,10 +30,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -308,15 +310,24 @@ fun TopSheetLayout(
                 ) {
                     val balloonState = rememberBalloonState()
 
+                    // A hint that history is below: a few nudges per app start, none once the
+                    // user has opened it. Repeating forever would just be noise over time.
                     val nudge = remember { Animatable(0f) }
+                    var nudgesLeft by remember { mutableIntStateOf(3) }
                     val isIdle = !lockDraggable.value && progress == 0f
+
+                    // settled open, not `progress`: progress briefly reads 1 on the first frame
+                    if (swipeableState.currentValue === TopSheetValue.Expanded && nudgesLeft > 0) {
+                        SideEffect { nudgesLeft = 0 }
+                    }
 
                     LaunchedEffect(isIdle) {
                         nudge.snapTo(0f)
                         if (!isIdle) return@LaunchedEffect
 
                         delay(1500)
-                        while (true) {
+                        while (nudgesLeft > 0) {
+                            nudgesLeft--
                             nudge.animateTo(
                                 1f,
                                 spring(
@@ -354,10 +365,12 @@ fun TopSheetLayout(
                         Box(
                             Modifier
                                 .graphicsLayer {
+                                    // drawing-phase only: no recomposition while nudging
                                     translationY = nudge.value * 8.dp.toPx()
+                                    scaleX = 1f + 0.25f * nudge.value
                                 }
                                 .height(5.dp)
-                                .width((40f + 24f * progress + 10f * nudge.value).dp)
+                                .width((40f + 24f * progress).dp)
                                 .background(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                         .copy(alpha = if (lockDraggable.value) 0f else 0.5f),
